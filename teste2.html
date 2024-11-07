@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Previsão de Suicídios</title>
+</head>
+<body>
+  <h1>Previsão de Suicídios no Brasil</h1>
+
+  <!-- Selecionar o estado -->
+  <label for="stateSelect">Selecione o Estado:</label>
+  <select id="stateSelect">
+    <!-- As opções serão carregadas a partir do arquivo JSON -->
+  </select>
+  
+  <!-- Botão para calcular a previsão -->
+  <button onclick="calculatePrediction()">Calcular Previsão</button>
+
+  <!-- Área para exibir os resultados -->
+  <div id="result"></div>
+
+  <script>
+    // Função para carregar estados do arquivo JSON
+    async function loadStates() {
+      try {
+        const response = await fetch('suicidios_brasil.json'); // Caminho do arquivo JSON
+        const data = await response.json();
+
+        const stateSelect = document.getElementById('stateSelect');
+
+        // Limpa qualquer opção existente e adiciona estados
+        stateSelect.innerHTML = '';
+        data.forEach(item => {
+          const option = document.createElement('option');
+          option.value = item.UF;
+          option.textContent = item.UF;
+          stateSelect.appendChild(option);
+        });
+      } catch (error) {
+        console.error('Erro ao carregar estados:', error);
+      }
+    }
+
+    // Função para carregar dados e calcular previsão para o estado selecionado
+    async function loadAndCalculate(selectedState) {
+      try {
+        const response = await fetch('suicidios_brasil.json');
+        const suicideData = await response.json();
+        
+        const stateData = suicideData.find(record => record.UF === selectedState);
+
+        if (!stateData) {
+          document.getElementById("result").innerHTML = "Estado não encontrado no dataset.";
+          return;
+        }
+
+        // Extrair anos e valores de suicídios
+        const years = Object.keys(stateData).filter(year => !isNaN(year));
+        const suicides = years.map(year => parseFloat(stateData[year]));
+        const inputYears = years.map(year => parseInt(year));
+
+        // Cálculo de somas necessárias
+        const n = inputYears.length;
+        const sumX = inputYears.reduce((acc, x) => acc + x, 0);
+        const sumY = suicides.reduce((acc, y) => acc + y, 0);
+        const sumXY = inputYears.reduce((acc, x, i) => acc + x * suicides[i], 0);
+        const sumX2 = inputYears.reduce((acc, x) => acc + x * x, 0);
+
+        // Cálculo do coeficiente angular (m) e intercepto (b)
+        const m = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+        const b = (sumY - m * sumX) / n;
+
+        // Calcular o R²
+        const yMean = sumY / n;
+        const SSE = suicides.reduce((acc, y, i) => acc + Math.pow(y - (m * inputYears[i] + b), 2), 0);
+        const SST = suicides.reduce((acc, y) => acc + Math.pow(y - yMean, 2), 0);
+        const R2 = 1 - (SSE / SST);
+
+        // Prever o valor para o próximo ano
+        const nextYear = Math.max(...inputYears) + 1;
+        const predictedSuicides = m * nextYear + b;
+
+        // Exibir os resultados
+        let resultHTML = `<h2>Resultados para ${selectedState}</h2>`;
+        resultHTML += `<p>Coeficiente angular (m): ${m.toFixed(2)}</p>`;
+        resultHTML += `<p>Intercepto (b): ${b.toFixed(2)}</p>`;
+        resultHTML += `<p>R² do modelo: ${R2.toFixed(4)}</p>`;
+        resultHTML += `<p>Previsão de suicídios para ${nextYear}: ${predictedSuicides.toFixed(2)}</p>`;
+
+        resultHTML += "<h3>Quantidade de Suicídios por Ano:</h3><ul>";
+        years.forEach((year, index) => {
+          resultHTML += `<li>${year}: ${suicides[index]}</li>`;
+        });
+        resultHTML += "</ul>";
+
+        document.getElementById("result").innerHTML = resultHTML;
+      } catch (error) {
+        console.error('Erro ao carregar o arquivo JSON:', error);
+      }
+    }
+
+    // Função para exibir a previsão
+    function calculatePrediction() {
+      const selectedState = document.getElementById('stateSelect').value;
+      loadAndCalculate(selectedState);
+    }
+
+    // Chama a função para carregar os estados quando a página é carregada
+    window.onload = loadStates;
+  </script>
+</body>
+</html>

@@ -1,6 +1,31 @@
 import arquivo from 'suicidios_brasil.json';
 
 // Função para carregar o JSON e fazer a previsão
+
+// Função para carregar estados do arquivo JSON
+async function loadStates() {
+  try {
+    const response = await fetch('suicidios_brasil.json'); // Caminho do arquivo JSON
+    const data = await response.json();
+
+    const stateSelect = document.getElementById('stateSelect');
+
+    // Limpa qualquer opção existente
+    stateSelect.innerHTML = '';
+
+    // Adiciona cada estado (chave UF) como uma opção no select
+    data.forEach(item => {
+      const option = document.createElement('option');
+      option.value = item.UF;
+      option.textContent = item.UF;
+      stateSelect.appendChild(option);
+    });
+  } catch (error) {
+    console.error('Erro ao carregar estados:', error);
+  }
+}
+
+
 function loadAndCalculate(selectedState) {
   
   fetch(data.map(arquivo))  // Ajuste o caminho para o seu arquivo JSON
@@ -61,5 +86,6 @@ function loadAndCalculate(selectedState) {
   function calcular() {
     const selectedState = document.getElementById("stateSelect").value;
     loadAndCalculate(selectedState);
+    window.onload = loadStates;
   }
   
